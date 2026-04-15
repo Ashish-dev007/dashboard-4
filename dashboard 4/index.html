@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STIR Pro Dashboard — SR1 · ZQ · SR3</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════ APP HEADER ═══════════════════════════ -->
+<header class="app-header">
+  <div class="header-brand">
+    <div class="brand-logo">📈</div>
+    <div>
+      <div class="brand-title">STIR Pro Dashboard</div>
+      <div class="brand-sub">SR1 · ZQ · SR3 &nbsp;|&nbsp; US Short-Term Interest Rates</div>
+    </div>
+  </div>
+  <div class="header-meta">
+    <span class="meta-chip sofr-chip">SOFR</span>
+    <span class="meta-chip fomc-chip">EFFR</span>
+    <span class="meta-chip" id="currentDateDisplay">—</span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════ DATE CONTROL BAR ═══════════════════════════ -->
+<div class="date-control-bar">
+  <div class="dcb-inner">
+    <div class="dcb-label"><span class="dcb-icon">📅</span> Date</div>
+
+    <div class="slider-wrap">
+      <button id="stepBack" class="step-btn" title="Step back (←)">◀</button>
+      <input type="range" id="mainDateSlider" class="main-slider" min="0" max="100" value="100" />
+      <button id="stepFwd" class="step-btn" title="Step forward (→)">▶</button>
+    </div>
+
+    <div class="dcb-date" id="sliderDateLabel">—</div>
+
+    <div class="step-options">
+      <button id="modeDay"  class="step-mode-btn active">Day</button>
+      <button id="modeWeek" class="step-mode-btn">Week</button>
+    </div>
+
+    <div class="fomc-nav">
+      <button id="prevFomc" class="fomc-btn">◀ Prev FOMC</button>
+      <button id="nextFomc" class="fomc-btn">Next FOMC ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ KPI SUMMARY BAR ═══════════════════════════ -->
+<div class="kpi-bar">
+  <div class="kpi-item">
+    <div class="kpi-label">Nearest Mtg Premium</div>
+    <div class="kpi-value kpi-zero" id="kpi-mp1">—</div>
+  </div>
+  <div class="kpi-sep"></div>
+  <div class="kpi-item">
+    <div class="kpi-label">Cum. Cuts Priced</div>
+    <div class="kpi-value kpi-zero" id="kpi-cum">—</div>
+  </div>
+  <div class="kpi-sep"></div>
+  <div class="kpi-item">
+    <div class="kpi-label">Neutral Rate</div>
+    <div class="kpi-value kpi-zero" id="kpi-nr">—</div>
+  </div>
+  <div class="kpi-sep"></div>
+  <div class="kpi-item">
+    <div class="kpi-label">Current Yr Cuts/Hikes</div>
+    <div class="kpi-value kpi-zero" id="kpi-ch25">—</div>
+  </div>
+  <div class="kpi-sep" id="kpiBlotterSep" style="display:none"></div>
+  <div class="kpi-item" id="kpiBlotterItem" style="display:none">
+    <div class="kpi-label">Blotter P&amp;L</div>
+    <div class="kpi-value kpi-zero" id="kpi-blotter-pnl">—</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ TAB NAV ═══════════════════════════ -->
+<nav class="tab-nav">
+  <button class="tab-btn active" data-tab="masterView">🏠 Master View</button>
+  <button class="tab-btn" data-tab="meetingPremium">🎯 Meeting Premiums</button>
+  <button class="tab-btn" data-tab="sr3Curve">📊 SR3 Curve</button>
+  <button class="tab-btn" data-tab="zqCurve">💹 ZQ / EFFR</button>
+  <button class="tab-btn" data-tab="neutralRate">⚖️ Neutral Rate &amp; Cuts/Hikes</button>
+  <button class="tab-btn" data-tab="meetingDiff">🔀 Meeting Differences</button>
+  <button class="tab-btn" data-tab="events">📰 Events Calendar</button>
+  <button class="tab-btn" data-tab="tradeBlotter">🧾 Trade Blotter</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 1 — MASTER VIEW
+═══════════════════════════════════════════════════════════════════ -->
+<section id="tab-masterView" class="tab-panel active">
+  <div class="panel-header">
+    <div>
+      <h2>Master View <span class="year-tag">2025–2028</span></h2>
+      <div class="panel-desc">SR3 3M Spread Curve &amp; ZQ Implied EFFR — side-by-side overview</div>
+    </div>
+  </div>
+
+  <!-- SR3 spread + ZQ charts side by side -->
+  <div class="two-col-charts">
+    <div class="chart-half">
+      <div class="chart-label">SR3 3-Month Spread Curve <span class="chart-sub" id="masterSr3DateLabel"></span></div>
+      <canvas id="masterSr3Chart"></canvas>
+    </div>
+    <div class="chart-half">
+      <div class="chart-label">ZQ Implied EFFR Curve <span class="chart-sub" id="masterZqDateLabel"></span></div>
+      <canvas id="masterZqChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Meeting Differences tables -->
+  <div class="two-col-side">
+    <div class="col-half">
+      <div class="subsection-title">Quarterly → Quarterly Differences (SEP meetings)</div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left">From</th>
+            <th style="text-align:left">To</th>
+            <th>Diff (bps)</th>
+            <th>Prev</th>
+            <th>Δ</th>
+          </tr></thead>
+          <tbody id="masterQqBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="col-half">
+      <div class="subsection-title">Non-Quarterly → Non-Quarterly Differences</div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left">From</th>
+            <th style="text-align:left">To</th>
+            <th>Diff (bps)</th>
+            <th>Prev</th>
+            <th>Δ</th>
+          </tr></thead>
+          <tbody id="masterQnqBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 2 — MEETING PREMIUM CURVE
+═══════════════════════════════════════════════════════════════════ -->
+<section id="tab-meetingPremium" class="tab-panel">
+  <div class="panel-header">
+    <div>
+      <h2>Meeting Premium Curve <span class="year-tag">2025</span></h2>
+      <div class="panel-desc">Per-meeting ZQ/SR1 premium (bps). Yellow dots = SEP meetings.</div>
+    </div>
+    <div class="panel-controls">
+      <div class="legend-chips">
+        <span class="lchip lchip-main">Current</span>
+        <span class="lchip lchip-ref">Reference</span>
+      </div>
+      <div class="toggle-group">
+        <span class="toggle-label">Ref date:</span>
+        <input type="date" id="refDateInput" class="date-input" value="2025-01-02" />
+        <button id="setRefBtn" class="mini-btn">Set</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Day Events Strip ──────────────────────────────────── -->
+  <div class="mp-day-events">
+    <div class="mp-day-events-header">
+      <span class="subsection-title" style="margin:0">📅 EVENTS FOR</span>
+      <span class="mp-events-date" id="mpEventsDateLbl">—</span>
+      <span class="mp-events-count" id="mpEventsCount"></span>
+    </div>
+    <div id="mpDayEventsBody">
+      <span class="mp-events-empty">No events recorded for this date.</span>
+    </div>
+  </div>
+
+  <!-- Meeting legend -->
+  <div id="mpMeetingLegend" class="meeting-legend"></div>
+
+  <!-- Two col: MP chart | SR3 spread chart -->
+  <div class="two-col-charts">
+    <div class="chart-half chart-mp-wide">
+      <canvas id="mpChart"></canvas>
+    </div>
+    <div class="chart-half">
+      <div class="chart-label">SR3 3M Spread <span class="chart-sub" id="mpSr3RefLbl"></span></div>
+      <canvas id="mpSr3SpreadChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Delta table -->
+  <div class="subsection">
+    <div class="subsection-title">Premium Delta vs Reference Date</div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr id="mpDeltaHead"></tr></thead>
+        <tbody id="mpDeltaBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SR3 spread delta table — compact -->
+  <div class="subsection">
+    <div class="subsection-title">SR3 3M Spread vs Reference</div>
+    <div class="table-scroll" style="max-height:100px;">
+      <table class="data-table" style="font-size:.76rem;">
+        <thead><tr>
+          <th style="text-align:left">Spread</th>
+          <th>Current</th>
+          <th>Ref</th>
+          <th>Δ</th>
+        </tr></thead>
+        <tbody id="mpSr3SpreadBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Neutral rate + Cuts/Hikes -->
+  <div class="two-col-side" style="margin-top:28px;">
+    <div class="col-half">
+      <div class="subsection-title">Neutral Rate (Rolling 10 Days)</div>
+      <div class="table-scroll neutral-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left">Date</th>
+            <th>Max Price</th>
+            <th>Neutral Rate</th>
+            <th>Δ</th>
+          </tr></thead>
+          <tbody id="mpNeutralBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="col-half">
+      <div class="subsection-title">Annual Cuts / Hikes (SR3)</div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left">Year</th>
+            <th>H1 (bps)</th>
+            <th>H2 (bps)</th>
+            <th>Full Yr</th>
+            <th>Ref Full</th>
+            <th>Δ vs Ref</th>
+            <th>Dir</th>
+          </tr></thead>
+          <tbody id="mpCutsHikesBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meeting Differences in this tab -->
+  <div class="two-col-side" style="margin-top:28px;">
+    <div class="col-half">
+      <div class="subsection-title">Q→Q Diffs (SEP meetings only)</div>
+      <div class="diff-chart-wrap"><canvas id="mpQqChart"></canvas></div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left">From</th>
+            <th style="text-align:left">To</th>
+            <th>Diff</th>
+          </tr></thead>
+          <tbody id="mpQqBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="col-half">
+      <div class="subsection-title">nQ→nQ Diffs (Non-SEP meetings)</div>
+      <div class="diff-chart-wrap"><canvas id="mpQnqChart"></canvas></div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left">From</th>
+            <th style="text-align:left">To</th>
+            <th>Diff</th>
+          </tr></thead>
+          <tbody id="mpQnqBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="subsection">
+    <div class="subsection-title">Mixed (Q↔nQ) Diffs</div>
+    <div class="diff-chart-wrap"><canvas id="mpMixedChart"></canvas></div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr>
+          <th style="text-align:left">From</th>
+          <th style="text-align:left">To</th>
+          <th>Diff</th>
+        </tr></thead>
+        <tbody id="mpMixedBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 3 — SR3 CURVE
+═══════════════════════════════════════════════════════════════════ -->
+<section id="tab-sr3Curve" class="tab-panel">
+  <div class="panel-header">
+    <div>
+      <h2>SR3 Curve</h2>
+      <div class="panel-desc">SR3 Quarterly Outright Prices · 3-Month Spread Curve · Implied Rates</div>
+    </div>
+  </div>
+
+  <div class="two-col-charts">
+    <div class="chart-half">
+      <div class="chart-label">SR3 Outright Prices <span class="chart-sub" id="sr3OutrightDateLabel"></span></div>
+      <canvas id="sr3OutrightChart"></canvas>
+    </div>
+    <div class="chart-half">
+      <div class="chart-label">3-Month Spread Curve (bps = rate change) <span class="chart-sub" id="sr3SpreadDateLabel"></span></div>
+      <canvas id="sr3SpreadChart"></canvas>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">Contract Mapping &amp; Pricing</div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr>
+          <th style="text-align:left">Slot</th>
+          <th style="text-align:left">Contract</th>
+          <th style="text-align:left">Expiry</th>
+          <th>Price</th>
+          <th>Impl. Rate (%)</th>
+          <th>DoD (bps)</th>
+        </tr></thead>
+        <tbody id="sr3MappingBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 4 — ZQ / EFFR CURVE
+═══════════════════════════════════════════════════════════════════ -->
+<section id="tab-zqCurve" class="tab-panel">
+  <div class="panel-header">
+    <div>
+      <h2>ZQ Implied EFFR Curve</h2>
+      <div class="panel-desc">30-Day Fed Funds — derived from meeting premiums. 100 − EFFR = ZQ Price.</div>
+    </div>
+  </div>
+
+  <div class="chart-container-wide">
+    <canvas id="zqChart"></canvas>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">ZQ Meeting-by-Meeting Table</div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr>
+          <th style="text-align:left">Slot</th>
+          <th style="text-align:left">Meeting</th>
+          <th>SEP</th>
+          <th>Premium (bps)</th>
+          <th>Cum Cuts (bps)</th>
+          <th>Impl. EFFR (%)</th>
+        </tr></thead>
+        <tbody id="zqBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 5 — NEUTRAL RATE & CUTS/HIKES
+═══════════════════════════════════════════════════════════════════ -->
+<section id="tab-neutralRate" class="tab-panel">
+  <div class="panel-header">
+    <div>
+      <h2>Neutral Rate &amp; Cuts / Hikes</h2>
+      <div class="panel-desc">Neutral Rate = 100 − max(SR3 outright). Annual cuts/hikes from SR3 3M spreads.</div>
+    </div>
+    <div class="panel-controls">
+      <div class="toggle-group">
+        <span class="toggle-label">View:</span>
+        <button id="chHalfFull" class="mini-btn active-toggle">Full Year</button>
+        <button id="chHalfH1"   class="mini-btn">H1</button>
+        <button id="chHalfH2"   class="mini-btn">H2</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col-side">
+    <div class="col-half">
+      <div class="subsection-title">Neutral Rate Rolling History</div>
+      <div class="table-scroll neutral-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left">Date</th>
+            <th>Max Price</th>
+            <th>Neutral Rate</th>
+            <th>Δ</th>
+          </tr></thead>
+          <tbody id="neutralBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="col-half">
+      <div class="subsection-title">Annual Cuts / Hikes <span id="cutsHikesDate" style="font-weight:normal;color:var(--accent)"></span></div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left">Year</th>
+            <th>H1 (bps)</th>
+            <th>H2 (bps)</th>
+            <th>Full Year</th>
+            <th>Direction</th>
+          </tr></thead>
+          <tbody id="cutsHikesBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bar chart -->
+  <div class="chart-container-wide" style="margin-top:24px;height:300px;">
+    <canvas id="cutsHikesChart"></canvas>
+  </div>
+
+  <!-- DoD change table -->
+  <div class="subsection">
+    <div class="dod-panel">
+      <div class="subsection-title">Day-over-Day Change: <span id="dodLabel" style="font-weight:normal;color:var(--accent)"></span></div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left">Year</th>
+            <th>H1 Prev</th><th>H1 Now</th><th>H1 Δ</th>
+            <th>H2 Prev</th><th>H2 Now</th><th>H2 Δ</th>
+            <th>Full Prev</th><th>Full Now</th><th>Full Δ</th>
+          </tr></thead>
+          <tbody id="dodBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 6 — MEETING DIFFERENCES
+═══════════════════════════════════════════════════════════════════ -->
+<section id="tab-meetingDiff" class="tab-panel">
+  <div class="panel-header">
+    <div>
+      <h2>Meeting Differences</h2>
+      <div class="panel-desc">Quarterly–Quarterly and Non-Quarterly–Non-Quarterly premium spread differences.</div>
+    </div>
+  </div>
+
+  <div class="two-col-side">
+    <div class="col-half">
+      <div class="subsection-title">Quarterly → Quarterly (SEP→SEP)</div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left">From</th>
+            <th style="text-align:left">To</th>
+            <th>Diff (bps)</th>
+            <th>Prev</th>
+            <th>Δ</th>
+            <th>Type</th>
+          </tr></thead>
+          <tbody id="qqBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="col-half">
+      <div class="subsection-title">Non-Quarterly → Non-Quarterly (nSEP→nSEP)</div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th style="text-align:left">From</th>
+            <th style="text-align:left">To</th>
+            <th>Diff (bps)</th>
+            <th>Prev</th>
+            <th>Δ</th>
+            <th>Type</th>
+          </tr></thead>
+          <tbody id="qnqBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-container-wide" style="margin-top:24px;">
+    <canvas id="diffChart"></canvas>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 7 — EVENTS CALENDAR
+═══════════════════════════════════════════════════════════════════ -->
+<section id="tab-events" class="tab-panel">
+  <div class="panel-header">
+    <div>
+      <h2>Events Calendar</h2>
+      <div class="panel-desc">Key macro data releases, FOMC decisions, and Fed speaker transcripts.</div>
+    </div>
+    <div class="panel-controls">
+      <div class="toggle-group">
+        <span class="toggle-label">Filter:</span>
+        <button id="evAll"      class="mini-btn active-toggle">All</button>
+        <button id="evFOMC"     class="mini-btn">FOMC</button>
+        <button id="evKeyData"  class="mini-btn">Key Data</button>
+        <button id="evHawkish"  class="mini-btn">Hawkish</button>
+        <button id="evDovish"   class="mini-btn">Dovish</button>
+      </div>
+      <div class="toggle-group">
+        <span class="toggle-label">From:</span>
+        <input type="date" id="evFrom" class="date-input" value="2025-01-01" />
+        <span class="toggle-label">To:</span>
+        <input type="date" id="evTo"   class="date-input" value="2025-04-22" />
+        <button id="evFilter" class="mini-btn">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-scroll events-scroll">
+    <table class="data-table events-table">
+      <thead><tr>
+        <th style="text-align:left">Date</th>
+        <th style="text-align:left">Time</th>
+        <th style="text-align:left">Event</th>
+        <th>Actual</th>
+        <th>Forecast</th>
+        <th>Prior</th>
+        <th>Surprise</th>
+        <th>Stance</th>
+      </tr></thead>
+      <tbody id="eventsBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 8 — TRADE BLOTTER
+═══════════════════════════════════════════════════════════════════ -->
+<section id="tab-tradeBlotter" class="tab-panel">
+  <div class="panel-header">
+    <div>
+      <h2>Trade Blotter</h2>
+      <div class="panel-desc">Buy/Sell meeting premiums, meeting spreads, and SR3 3M spreads. Up to 40 simultaneous trades.</div>
+    </div>
+  </div>
+
+  <!-- ── Trade Builder ───────────────────────────────────────── -->
+  <div class="tb-builder-card">
+    <div class="tb-builder-title">➕ Add New Trade</div>
+    <div class="tb-builder-row">
+      <div class="tb-field">
+        <label class="tb-label">Type</label>
+        <select id="tbType" class="tb-select">
+          <option value="meeting_prem">Meeting Premium (ZQ/SR1)</option>
+          <option value="meeting_spread">Meeting Spread (FEDn – FEDm)</option>
+          <option value="sr3_spread">SR3 3M Spread (SRAn – SRAm)</option>
+          <option value="sr3_outright">SR3 Outright (Buy/Sell individual contract)</option>
+        </select>
+      </div>
+      <div class="tb-field">
+        <label class="tb-label">Leg 1</label>
+        <select id="tbLeg1" class="tb-select"></select>
+      </div>
+      <div class="tb-field" id="tbLeg2Wrap">
+        <label class="tb-label">Leg 2</label>
+        <select id="tbLeg2" class="tb-select"></select>
+      </div>
+      <div class="tb-field">
+        <label class="tb-label">Side</label>
+        <div class="tb-side-btns">
+          <button class="tb-side-btn tb-buy-btn active" id="tbBuy">▲ BUY</button>
+          <button class="tb-side-btn tb-sell-btn" id="tbSell">▼ SELL</button>
+        </div>
+      </div>
+      <div class="tb-field tb-field-sm">
+        <label class="tb-label">Lots</label>
+        <input type="number" id="tbSize" class="tb-input" value="1" min="1" max="1000" />
+      </div>
+      <div class="tb-field tb-field-sm">
+        <label class="tb-label">DV01/lot</label>
+        <span class="tb-dv01-label" id="tbDv01Label">$41.67</span>
+      </div>
+      <div class="tb-field">
+        <label class="tb-label">Entry (bps)</label>
+        <span class="tb-price-preview" id="tbPricePreview">—</span>
+      </div>
+      <div class="tb-field">
+        <label class="tb-label">&nbsp;</label>
+        <button class="tb-add-btn" id="tbAddTrade">＋ Add Trade</button>
+      </div>
+    </div>
+    <div class="tb-builder-hint" id="tbBuilderHint">Select a type and leg(s) to preview entry price from the current slider date.</div>
+  </div>
+
+  <!-- ── Blotter Table ───────────────────────────────────────── -->
+  <div class="subsection">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="subsection-title" style="margin:0">Active Trades</span>
+        <span class="mp-events-count" id="tbTradeCount">0 trades</span>
+      </div>
+      <button class="mini-btn" id="tbClearAll" style="color:#ef4444;border-color:#ef4444">🗑 Clear All</button>
+    </div>
+    <div class="table-scroll" style="max-height:380px;">
+      <table class="data-table tb-table" id="tbTradeTable">
+        <thead><tr>
+          <th>#</th>
+          <th style="text-align:left">Type</th>
+          <th style="text-align:left">Instrument</th>
+          <th>Side</th>
+          <th>Lots</th>
+          <th>Entry Date</th>
+          <th>Entry (bps)</th>
+          <th>Current (bps)</th>
+          <th>P&amp;L bps</th>
+          <th>P&amp;L $</th>
+          <th>vs Ref bps</th>
+          <th>vs Ref $</th>
+          <th>✕</th>
+        </tr></thead>
+        <tbody id="tbTradesBody">
+          <tr><td colspan="13" style="text-align:center;color:var(--text-muted);padding:24px">No trades open. Add a trade above.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Summary Bar ────────────────────────────────────────── -->
+  <div class="tb-summary-bar">
+    <div class="tb-summary-item">
+      <div class="tb-summary-label">Total P&amp;L vs Entry</div>
+      <div class="tb-summary-val kpi-zero" id="tbTotalPL">—</div>
+    </div>
+    <div class="tb-summary-item">
+      <div class="tb-summary-label">Total P&amp;L vs Ref Date</div>
+      <div class="tb-summary-val kpi-zero" id="tbTotalRefPL">—</div>
+    </div>
+    <div class="tb-summary-item">
+      <div class="tb-summary-label">Open Trades</div>
+      <div class="tb-summary-val" id="tbOpenCount">0</div>
+    </div>
+    <div class="tb-summary-item">
+      <div class="tb-summary-label">Total $ P&amp;L</div>
+      <div class="tb-summary-val kpi-zero" id="tbTotalDollarPL">—</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ FOMC INFO BAR ═══════════════════════════ -->
+<div id="fomcInfoBar" class="fomc-info-bar" style="display:none;">
+  <span class="fomc-info-icon">🏛️</span>
+  <span id="fomcInfoText"></span>
+  <button id="closeFomcInfo" class="close-btn">✕</button>
+</div>
+
+<!-- ═══════════════════════════ SCRIPTS ═══════════════════════════ -->
+<script src="chart_umd_min.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+
+<!-- Streamlit full-screen: report screen height so CSS can override iframe to 100vh -->
+<script>
+(function(){
+  function sh(){
+    var h = (window.screen&&window.screen.availHeight)||window.innerHeight||1080;
+    try{ window.parent.postMessage({isStreamlitMessage:true,type:'streamlit:setFrameHeight',height:h},'*'); }catch(e){}
+  }
+  window.addEventListener('load',sh);
+  window.addEventListener('resize',sh);
+  [80,400,1000,2000].forEach(function(t){setTimeout(sh,t);});
+}());
+</script>
+</body>
+</html>
